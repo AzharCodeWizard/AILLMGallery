@@ -1,0 +1,41 @@
+# Android Development Best Practices
+
+When writing Android code, strictly adhere to the following best practices:
+
+## 1. Architecture & Design Patterns
+- **Modern App Architecture**: Follow the official Android architecture guidelines (MVVM/MVI). Use Unidirectional Data Flow (UDF).
+- **Separation of Concerns**: Divide the app into UI Layer, Domain Layer (optional), and Data Layer.
+- **ViewModels**: Keep UI logic in Composables/Views and business logic in ViewModels. Never pass Android framework classes (like `Context`) to ViewModels to prevent memory leaks and keep them testable.
+- **State Management**: Represent UI state as a single Kotlin data class. Update it using Immutable data practices.
+
+## 2. UI / Jetpack Compose
+- **Stateless Composables**: Hoist state up. Pass state down as parameters and events up as lambdas. Do not pass ViewModels directly to lower-level composables.
+- **Lifecycle Awareness**: Always use `collectAsStateWithLifecycle()` when collecting flows in the UI to prevent resource wastage when the app is in the background.
+- **Side Effects**: Handle side effects correctly using Compose effect handlers (`LaunchedEffect`, `DisposableEffect`, `rememberCoroutineScope`).
+- **Material Design 3**: Utilize Material 3 components and typography. Support Dark Mode by using `isSystemInDarkTheme()`.
+- **Recomposition**: Keep composables optimized. Use `remember` and `derivedStateOf` to prevent unnecessary recompositions.
+
+## 3. Kotlin & Coroutines
+- **Coroutines over RxJava/Callbacks**: Use Kotlin Coroutines for all asynchronous tasks.
+- **Flows over LiveData**: Use `StateFlow` and `SharedFlow` instead of `LiveData` across all layers.
+- **Dispatcher Injection**: Always inject `CoroutineDispatcher` (e.g., `Dispatchers.IO`) rather than hardcoding them. This makes testing easier.
+- **Null Safety**: Rely on Kotlin's null safety. Avoid the `!!` operator entirely.
+
+## 4. Data Layer & Networking
+- **Repository Pattern**: Use repositories to abstract data sources (Network + Local DB) from the rest of the app.
+- **Error Handling**: Use structured concurrency and sealed classes (e.g., `Result<T>` or `Resource<T>`) to handle Success, Error, and Loading states consistently.
+- **Libraries**: Use Retrofit/Ktor for networking, Room for local databases, and Kotlinx Serialization/Moshi for JSON parsing.
+
+## 5. Dependency Injection
+- **Hilt/Dagger**: Use Hilt for dependency injection.
+- **Interface Segregation**: Inject interfaces instead of concrete implementations to ensure the code remains modular and easily testable.
+
+## 6. Testing
+- **Unit Tests**: Write unit tests for ViewModels, UseCases, and Repositories using JUnit 4/5 and MockK. Use `runTest` for testing coroutines.
+- **UI Tests**: Write UI tests for Composables using Compose testing tools.
+
+## 7. Clean Code & Performance
+- Follow standard Kotlin style guides (ktfmt/ktlint).
+- Keep methods small and classes focused on a single responsibility (SOLID principles).
+- Handle configuration changes correctly without losing state or causing crashes.
+- Monitor for memory leaks and ensure resources (like streams or BroadcastReceivers) are closed/unregistered properly.

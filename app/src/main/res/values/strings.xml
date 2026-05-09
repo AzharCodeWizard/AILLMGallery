@@ -1,0 +1,59 @@
+<resources>
+    <string name="app_name">AI LLM Gallery</string>
+
+    <!-- Categories -->
+    <string name="category_text">Text</string>
+    <string name="category_vision">Vision</string>
+    <string name="category_multimodal">Multimodal</string>
+    <string name="category_code">Code</string>
+    <string name="category_all">All</string>
+
+    <!-- Capabilities -->
+    <string name="capability_title_creative_writing">Creative Writing</string>
+    <string name="capability_desc_creative_writing">Generate stories, poems, and creative content with on-device AI. Unleash your imagination privately.</string>
+    <string-array name="capability_prompts_creative_writing">
+        <item>Write a thrilling sci-fi scene about a rogue AI discovering emotion.</item>
+        <item>Write a cinematic script intro for a cyberpunk detective movie.</item>
+        <item>Compose an epic poem about humanity\'s journey to the stars.</item>
+    </string-array>
+
+    <string name="capability_title_summarization">Summarization</string>
+    <string name="capability_desc_summarization">Condense long articles and documents into key points. Get the essence without the noise.</string>
+    <string-array name="capability_prompts_summarization">
+        <item>Summarize the text below in 3 actionable bullet points:</item>
+        <item>Distill this complex text into a simple explanation for a 10-year-old:</item>
+        <item>Extract the main arguments and counter-arguments from this text:</item>
+    </string-array>
+
+    <string name="capability_title_code_assistant">Code Assistant</string>
+    <string name="capability_desc_code_assistant">Get code explanations, debugging help, and generation assistance. Your on-device pair programmer.</string>
+    <string-array name="capability_prompts_code_assistant">
+        <item>Write a Jetpack Compose UI component for a beautiful animated login screen.</item>
+        <item>Review the following Kotlin snippet for memory leaks and optimize it:</item>
+        <item>Explain the concept of Coroutines in Android with real-world examples.</item>
+    </string-array>
+
+    <string name="capability_title_image_captioning">Image Captioning</string>
+    <string name="capability_desc_image_captioning">Generate detailed descriptions of any image. Perfect for accessibility and content creation.</string>
+    <string-array name="capability_prompts_image_captioning">
+        <item>Describe the emotional mood, lighting, and composition of this image.</item>
+        <item>Write a creative, engaging social media caption for this photo.</item>
+        <item>Generate a highly detailed alt-text description for visually impaired users.</item>
+    </string-array>
+
+    <string name="capability_title_visual_qa">Visual Q&amp;A</string>
+    <string name="capability_desc_visual_qa">Ask questions about images and get intelligent answers. See the world through AI eyes.</string>
+    <string-array name="capability_prompts_visual_qa">
+        <item>Analyze the architectural style of the buildings in this scene.</item>
+        <item>What specific breed of dog is pictured, and what are its key features?</item>
+        <item>Based on the lighting and shadows, what time of day was this photo taken?</item>
+    </string-array>
+
+    <string name="capability_title_object_detection">Object Detection</string>
+    <string name="capability_desc_object_detection">Identify and classify objects in images with on-device processing. No data leaves your phone.</string>
+    <string-array name="capability_prompts_object_detection">
+        <item>List all electronic devices visible in the scene and their approximate locations.</item>
+        <item>Identify and count all the different types of food items shown on the table.</item>
+        <item>Detect any potential safety hazards or obstacles visible in this environment.</item>
+    </string-array>
+</resources>

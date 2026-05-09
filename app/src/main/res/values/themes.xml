@@ -1,0 +1,4 @@
+<resources>
+
+    <style name="Theme.AILLMGallery" parent="Theme.MaterialComponents.Light" />
+</resources>
