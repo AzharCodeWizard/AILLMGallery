@@ -4,9 +4,9 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.azhar.aillmgallery.ai.GenerationConfig
 import com.azhar.aillmgallery.ai.LlmInferenceManager
-import com.azhar.aillmgallery.ai.ModelManager
-import com.azhar.aillmgallery.ai.ModelState
+import com.azhar.aillmgallery.ai.PromptFormatter
 import com.azhar.aillmgallery.data.local.AppDatabase
 import com.azhar.aillmgallery.data.local.entity.QuestionEntity
 import com.azhar.aillmgallery.data.local.entity.QuizEntity
@@ -24,28 +24,9 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
     private val quizDao = db.quizDao()
     private val llmManager = LlmInferenceManager.getInstance(application)
-    private val modelManager = ModelManager(application)
 
     init {
-        viewModelScope.launch {
-            modelManager.ensureModelsDirectory()
-            modelManager.scanForModels()
-            modelManager.modelState.collect { state ->
-                when (state) {
-                    is ModelState.Ready -> {
-                        if (!llmManager.isInitialized.value) {
-                            llmManager.initialize(getApplication(), state.model.path)
-                        }
-                    }
-                    is ModelState.NotFound -> {
-                        if (!llmManager.isInitialized.value) {
-                            llmManager.initializeMock("Demo Engine")
-                        }
-                    }
-                    else -> Unit
-                }
-            }
-        }
+        viewModelScope.launch { llmManager.ensureInitialized() }
     }
 
     val quizzes: StateFlow<List<QuizWithQuestions>> = quizDao.getAllQuizzesWithQuestions()
@@ -62,8 +43,7 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             _isGenerating.value = true
             _error.value = null
             
-            val prompt = """
-                <|im_start|>system
+            val systemPrompt = """
                 You are an expert educational AI designed to create high-quality, engaging multiple-choice quizzes.
                 Your task is to generate a quiz based on the user's topic.
                 The quiz must be strictly formatted as a JSON object. Do not include any other text, markdown formatting, or explanations outside the JSON.
@@ -87,15 +67,19 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
                 - Make the questions challenging but fair.
                 - Ensure there is only one unambiguously correct answer per question.
                 - Always generate all content in English only.
-                <|im_end|>
-                <|im_start|>user
-                Generate a quiz about: $topic.
-                <|im_end|>
-                <|im_start|>assistant
             """.trimIndent()
+            // Template depends on the loaded model, so make sure it's loaded first.
+            llmManager.ensureInitialized()
+            val prompt = PromptFormatter.build(
+                template = llmManager.promptTemplate,
+                systemPrompt = systemPrompt,
+                userMessage = "Generate a quiz about: $topic."
+            )
 
             try {
-                val responseJson = llmManager.generateCompleteResponse(prompt)
+                val responseJson = PromptFormatter.cleanOutput(
+                    llmManager.generateCompleteResponse(prompt, GenerationConfig.PRECISE, mockKey = "quiz")
+                )
                 // Extract JSON block using regex or string manipulation to handle conversational fluff
                 val cleanJson = responseJson.replace("```json", "").replace("```", "").trim()
                 
