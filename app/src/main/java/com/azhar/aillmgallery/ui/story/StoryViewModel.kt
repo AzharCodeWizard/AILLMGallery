@@ -4,16 +4,17 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.azhar.aillmgallery.ai.GenerationConfig
 import com.azhar.aillmgallery.ai.LlmInferenceManager
-import com.azhar.aillmgallery.ai.ModelManager
-import com.azhar.aillmgallery.ai.ModelState
 import com.azhar.aillmgallery.ai.PiperTtsManager
+import com.azhar.aillmgallery.ai.PromptFormatter
 import com.azhar.aillmgallery.data.local.AppDatabase
 import com.azhar.aillmgallery.data.local.entity.StoryEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -23,28 +24,9 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
     private val storyDao = db.storyDao()
     private val llmManager = LlmInferenceManager.getInstance(application)
     private val piperTts = PiperTtsManager(application)
-    private val modelManager = ModelManager(application)
 
     init {
-        viewModelScope.launch {
-            modelManager.ensureModelsDirectory()
-            modelManager.scanForModels()
-            modelManager.modelState.collect { state ->
-                when (state) {
-                    is ModelState.Ready -> {
-                        if (!llmManager.isInitialized.value) {
-                            llmManager.initialize(getApplication(), state.model.path)
-                        }
-                    }
-                    is ModelState.NotFound -> {
-                        if (!llmManager.isInitialized.value) {
-                            llmManager.initializeMock("Demo Engine")
-                        }
-                    }
-                    else -> Unit
-                }
-            }
-        }
+        viewModelScope.launch { llmManager.ensureInitialized() }
 
         // Auto-initialize Piper TTS if model is already downloaded
         viewModelScope.launch {
@@ -62,6 +44,10 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _currentStory = MutableStateFlow<StoryEntity?>(null)
     val currentStory: StateFlow<StoryEntity?> = _currentStory.asStateFlow()
+
+    /** Text generated so far, shown live while the story is being written. */
+    private val _streamingText = MutableStateFlow("")
+    val streamingText: StateFlow<String> = _streamingText.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -109,21 +95,29 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
                 - Constraints: Do not include any introductions, conclusions, meta-commentary, or titles. Output ONLY the story text itself. Always respond in English only."""
             }
 
-            val prompt = """
-                <|im_start|>system
-                $systemPrompt
-                <|im_end|>
-                <|im_start|>user
-                Write a compelling ${if (isSongOrPoem) genre.lowercase() else "story"} about: $promptTopic.
-                <|im_end|>
-                <|im_start|>assistant
-            """.trimIndent()
+            // Template depends on the loaded model, so make sure it's loaded first.
+            llmManager.ensureInitialized()
+            val prompt = PromptFormatter.build(
+                template = llmManager.promptTemplate,
+                systemPrompt = systemPrompt.lines().joinToString("\n") { it.trim() },
+                userMessage = "Write a compelling ${if (isSongOrPoem) genre.lowercase() else "story"} about: $promptTopic."
+            )
 
             try {
-                val response = llmManager.generateCompleteResponse(prompt)
-                // Clean the response: convert literal \n to real newlines, remove leading meta-text
-                val cleanResponse = response.trim()
-                    .replace("\\n", "\n")           // literal \n → real newline
+                _streamingText.value = ""
+                var response = ""
+                var failed = false
+                llmManager.generateResponse(prompt, GenerationConfig.CREATIVE, mockKey = "story")
+                    .conflate()
+                    .collect { result ->
+                        response = result.text
+                        failed = result.isError
+                        _streamingText.value = PromptFormatter.cleanOutput(result.text).trimStart()
+                    }
+                if (failed || response.isBlank()) error("Empty response")
+
+                // Clean the response: strip template tokens, remove leading meta-text
+                val cleanResponse = PromptFormatter.cleanOutput(response).trim()
                     .replace(Regex("^Song Lyrics:\\s*\n*", RegexOption.IGNORE_CASE), "")
                     .replace(Regex("^Poem:\\s*\n*", RegexOption.IGNORE_CASE), "")
                     .trim()
@@ -151,6 +145,7 @@ class StoryViewModel(application: Application) : AndroidViewModel(application) {
                 _error.value = "Failed to generate: Ensure a model is loaded and try again."
             } finally {
                 _isGenerating.value = false
+                _streamingText.value = ""
             }
         }
     }

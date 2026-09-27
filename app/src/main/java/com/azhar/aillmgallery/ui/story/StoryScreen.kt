@@ -84,6 +84,7 @@ fun StoryScreen(
 ) {
     val stories by viewModel.stories.collectAsState()
     val isGenerating by viewModel.isGenerating.collectAsState()
+    val streamingText by viewModel.streamingText.collectAsState()
     val currentStory by viewModel.currentStory.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -452,6 +453,32 @@ fun StoryScreen(
                                 } else {
                                     Text("Generate Script", fontWeight = FontWeight.SemiBold)
                                 }
+                            }
+                        }
+                    }
+
+                    // ── Live preview while the model writes ──
+                    androidx.compose.animation.AnimatedVisibility(visible = isGenerating && streamingText.isNotBlank()) {
+                        androidx.compose.material3.Surface(
+                            shape = RoundedCornerShape(24.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(20.dp)) {
+                                Text(
+                                    text = "Writing…",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    // Show the tail so the newest lines are always visible.
+                                    text = streamingText.takeLast(600),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             }
                         }
                     }

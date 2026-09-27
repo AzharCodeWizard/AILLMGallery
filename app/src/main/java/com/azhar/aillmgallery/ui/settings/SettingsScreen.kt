@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Science
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -32,9 +33,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -59,6 +62,9 @@ fun SettingsScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val downloadedModels by viewModel.downloadedModels.collectAsState()
     val activeModel by viewModel.activeModelName.collectAsState()
+    val activeBackend by viewModel.activeBackend.collectAsState()
+    val isLoading by viewModel.isModelLoading.collectAsState()
+    val useGpu by viewModel.useGpu.collectAsState()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -103,7 +109,34 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Outlined.Memory,
                     title = "Current AI Engine",
-                    subtitle = activeModel
+                    subtitle = if (isLoading) "Loading model…" else "$activeModel · $activeBackend"
+                )
+                if (isLoading) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 16.dp)
+                    )
+                }
+            }
+
+            // ── Performance Section ──
+            SectionHeader(title = "Performance")
+
+            SettingsCard {
+                SettingsItem(
+                    icon = Icons.Outlined.Speed,
+                    title = "GPU acceleration",
+                    subtitle = "Usually 2–4× faster generation. Falls back to CPU automatically if this device or model doesn't support it.",
+                    onClick = { if (!isLoading) viewModel.setUseGpu(!useGpu) },
+                    action = {
+                        Switch(
+                            checked = useGpu,
+                            enabled = !isLoading,
+                            onCheckedChange = { viewModel.setUseGpu(it) }
+                        )
+                    }
                 )
             }
 
@@ -157,12 +190,12 @@ fun SettingsScreen(
             } else {
                 SettingsCard {
                     downloadedModels.forEachIndexed { index, file ->
-                        val isActive = activeModel.contains(file.nameWithoutExtension, ignoreCase = true)
+                        val isActive = activeModel == file.name
                         SettingsItem(
                             icon = if (isActive) Icons.Outlined.Memory else Icons.Outlined.FolderOpen,
                             title = file.nameWithoutExtension + if (isActive) " ✓ Active" else "",
                             subtitle = "${file.length() / 1024 / 1024} MB" + if (!isActive) " • Tap to activate" else "",
-                            onClick = { viewModel.selectModel(file) },
+                            onClick = { if (!isActive && !isLoading) viewModel.selectModel(file) },
                             action = {
                                 IconButton(onClick = { viewModel.deleteModel(file) }) {
                                     Icon(
@@ -274,9 +307,9 @@ private fun SettingsCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {
         content()
